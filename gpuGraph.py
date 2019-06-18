@@ -8,6 +8,18 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from collections import deque
 
+import ssh
+
+if len(sys.argv[1]) > 2:
+
+    remote = sys.argv[1]
+    username, hostname = remote.split('@')
+    conn = ssh.setup_ssh(username, hostname, 22)
+
+else:
+    print("Usage", sys.argv[0], " username@hostname")
+    sys.exit(1)
+
 gpuLoadFile="/sys/devices/gpu.0/load"
 # On the Jetson Nano this is a symbolic link to:
 # gpuLoadFile="/sys/devices/platform/host1x/57000000.gpu/load"
@@ -57,9 +69,11 @@ def updateGraph(frame):
  
     # Now draw the GPU usage
     gpuy_list.popleft()
-    with open(gpuLoadFile, 'r') as gpuFile:
-      fileData = gpuFile.read()
+
+    fileData = ssh.get_gpu_load(conn)
+
     # The GPU load is stored as a percentage * 10, e.g 256 = 25.6%
+    print("Usage: ", str(int(fileData)/10))
     gpuy_list.append(int(fileData)/10)
     gpuLine.set_data(gpux_list,gpuy_list)
     fill_lines.remove()
@@ -73,5 +87,4 @@ animation = FuncAnimation(fig, updateGraph, frames=200,
                     init_func=initGraph,  interval=250, blit=True)
 
 plt.show()
-
-
+ssh.kill_conn(sftp)
